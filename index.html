@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="My Day">
+<title>My Day</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1A1612; --surface: rgba(245,240,232,0.04); --border: rgba(245,240,232,0.08);
+  --text: #F5F0E8; --muted: rgba(245,240,232,0.45); --dim: rgba(245,240,232,0.18);
+  --orange: #E8A87C; --teal: #7CB9A8; --purple: #A89FC9; --rose: #C9909A;
+  --orange-bg: rgba(232,168,124,0.12); --teal-bg: rgba(124,185,168,0.12);
+  --purple-bg: rgba(168,159,201,0.12); --rose-bg: rgba(201,144,154,0.12);
+  --safe-top: env(safe-area-inset-top,0px); --safe-bottom: env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow-x:hidden;background:var(--bg);color:var(--text);font-family:'Lora',serif}
+body{padding-top:var(--safe-top);padding-bottom:calc(var(--safe-bottom)+70px);
+  background-image:radial-gradient(ellipse at 15% 0%,rgba(232,168,124,0.07) 0%,transparent 55%),
+  radial-gradient(ellipse at 85% 100%,rgba(124,185,168,0.05) 0%,transparent 55%)}
+::-webkit-scrollbar{display:none}
+
+/* SETUP SCREEN */
+#setupScreen{position:fixed;inset:0;background:var(–bg);z-index:1000;overflow-y:auto;
+padding:calc(var(–safe-top)+32px) 24px calc(var(–safe-bottom)+40px);display:none}
+#setupScreen.show{display:block}
+.setup-emoji{font-size:52px;text-align:center;margin-bottom:16px}
+.setup-title{font-family:‘Playfair Display’,serif;font-size:28px;font-weight:700;text-align:center;margin-bottom:8px}
+.setup-sub{font-size:14px;color:var(–muted);text-align:center;line-height:1.7;font-style:italic;margin-bottom:32px}
+.setup-step{background:var(–surface);border:1px solid var(–border);border-radius:14px;padding:18px;margin-bottom:12px}
+.setup-step h4{font-family:‘Playfair Display’,serif;font-size:16px;margin-bottom:6px;color:var(–orange)}
+.setup-step p{font-size:13px;color:var(–muted);line-height:1.6;margin-bottom:10px}
+.setup-step code{background:rgba(232,168,124,0.15);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px;color:var(–orange)}
+.setup-input{width:100%;background:rgba(245,240,232,0.07);border:1px solid var(–border);border-radius:10px;
+padding:13px 16px;color:var(–text);font-family:‘Lora’,serif;font-size:14px;outline:none;margin-top:4px}
+.setup-input:focus{border-color:rgba(232,168,124,0.5)}
+.setup-btn{width:100%;background:var(–orange);color:#1A1612;border:none;border-radius:14px;
+padding:16px;font-family:‘Lora’,serif;font-size:14px;font-weight:700;letter-spacing:1px;
+text-transform:uppercase;cursor:pointer;margin-top:20px}
+.setup-note{font-size:12px;color:var(–dim);text-align:center;line-height:1.6;margin-top:16px;font-style:italic}
+.setup-error{color:var(–rose);font-size:13px;text-align:center;margin-top:10px;display:none}
+
+/* TAB BAR */
+.tab-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(26,22,18,0.95);
+backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(–border);
+display:flex;z-index:200;padding-bottom:var(–safe-bottom)}
+.tab-btn{flex:1;background:none;border:none;color:var(–muted);font-family:‘Lora’,serif;
+font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:12px 4px 10px;
+display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:color 0.2s}
+.tab-btn.active{color:var(–orange)}
+.tab-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+.page{display:none;padding-bottom:90px}
+.page.active{display:block}
+
+/* HEADER */
+.header{padding:24px 20px 18px;border-bottom:1px solid var(–border);position:sticky;top:0;
+background:rgba(26,22,18,0.93);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:100}
+.header-date{font-size:10px;letter-spacing:3px;color:var(–orange);text-transform:uppercase;margin-bottom:3px}
+.header-title{font-family:‘Playfair Display’,serif;font-size:24px;font-weight:700;letter-spacing:-0.3px}
+.header-sub{font-size:12px;color:var(–muted);font-style:italic;margin-top:2px}
+
+/* SCORE CARD */
+.score-card{margin:16px 14px 0;background:var(–surface);border:1px solid var(–border);border-radius:18px;padding:18px}
+.score-row{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.score-ring-wrap{position:relative;flex-shrink:0}
+.score-ring-wrap svg{display:block}
+.score-text-wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-family:‘Playfair Display’,serif;font-size:26px;font-weight:700;line-height:1}
+.score-info{flex:1}
+.score-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(–muted);margin-bottom:2px}
+.score-tasks{font-size:11px;color:var(–muted);line-height:1.5;margin-bottom:12px}
+.cat-row{margin-bottom:8px}
+.cat-row-top{display:flex;justify-content:space-between;margin-bottom:3px}
+.cat-name{font-size:10px;letter-spacing:1px;text-transform:uppercase}
+.cat-count{font-size:10px;color:var(–muted)}
+.progress-track{height:4px;background:rgba(245,240,232,0.08);border-radius:2px}
+.progress-fill{height:100%;border-radius:2px;transition:width 0.5s cubic-bezier(0.34,1.56,0.64,1)}
+.rowing-stat{display:flex;align-items:center;justify-content:space-between;margin-top:14px;
+padding-top:14px;border-top:1px solid var(–border)}
+.rowing-count{font-family:‘Playfair Display’,serif;font-size:20px;color:var(–teal)}
+
+/* SYNC STATUS */
+.sync-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;
+padding-top:14px;border-top:1px solid var(–border)}
+.sync-status{font-size:11px;color:var(–muted);display:flex;align-items:center;gap:6px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(–dim);flex-shrink:0}
+.sync-dot.synced{background:var(–teal)}
+.sync-dot.error{background:var(–rose)}
+.sync-dot.syncing{background:var(–orange);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.sync-btn{background:none;border:1px solid var(–border);color:var(–muted);font-family:‘Lora’,serif;
+font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:16px;cursor:pointer}
+
+/* WHY */
+.why-section{margin-top:14px;border-top:1px solid var(–border);padding-top:12px}
+.why-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:inherit;
+font-family:‘Lora’,serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+padding:5px 0;cursor:pointer;width:100%}
+.why-arrow{font-size:9px;transition:transform 0.2s ease;display:inline-block}
+.why-arrow.open{transform:rotate(90deg)}
+.why-body{font-size:13px;line-height:1.7;font-style:italic;color:rgba(245,240,232,0.75);
+padding:10px 12px;border-radius:10px;margin:4px 0 8px;display:none}
+.why-body.open{display:block}
+
+.section-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(–dim);padding:20px 18px 10px}
+.blocks-list{padding:0 14px;display:flex;flex-direction:column;gap:6px}
+.block{border:1px solid var(–border);border-radius:14px;overflow:hidden;background:rgba(245,240,232,0.02)}
+.block.current{border-color:var(–c,var(–orange));background:var(–cbg,var(–orange-bg))}
+.block-header{padding:13px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;
+min-height:58px;-webkit-user-select:none;user-select:none}
+.block-icon{font-size:19px;min-width:24px;text-align:center}
+.block-meta{flex:1;min-width:0}
+.block-tags{display:flex;align-items:center;gap:5px;margin-bottom:3px;flex-wrap:wrap}
+.block-time{font-size:10px;color:var(–muted);font-family:monospace}
+.block-badge{font-size:8px;padding:2px 5px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;font-weight:700;font-family:‘Lora’,serif}
+.now-badge{font-size:8px;padding:2px 5px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;font-weight:700;font-family:‘Lora’,serif;color:#1A1612}
+.block-name{font-family:‘Playfair Display’,serif;font-size:14px;color:var(–text);line-height:1.2}
+.block-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.block-frac{font-size:11px;color:var(–muted);text-align:right}
+.block-mini-bar{width:32px;height:3px;background:rgba(245,240,232,0.1);border-radius:2px;margin-top:3px}
+.block-mini-fill{height:100%;border-radius:2px;transition:width 0.3s}
+.block-chevron{font-size:10px;color:var(–dim);transition:transform 0.25s ease}
+.block-chevron.open{transform:rotate(180deg)}
+.block-body{border-top:1px solid var(–border);padding:12px 14px 14px;display:none}
+.block-body.open{display:block}
+.block-desc{font-size:12px;color:var(–muted);line-height:1.65;font-style:italic;margin-bottom:12px}
+.task-item{display:flex;align-items:center;gap:11px;padding:8px 0;cursor:pointer;
+border-bottom:1px solid rgba(245,240,232,0.05);-webkit-user-select:none;user-select:none}
+.task-item:last-child{border-bottom:none}
+.task-box{width:22px;height:22px;border-radius:6px;border:2px solid var(–dim);flex-shrink:0;
+display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.task-box.done::after{content:‘✓’;font-size:12px;font-weight:700;color:#1A1612}
+.task-label{font-size:13px;line-height:1.4;flex:1;transition:all 0.15s}
+.task-label.done{color:var(–dim);text-decoration:line-through}
+.rowing-block{margin:12px 0 4px}
+.rowing-counter-row{display:flex;align-items:center;justify-content:space-between;
+padding:10px 0;border-bottom:1px solid rgba(245,240,232,0.05)}
+.rowing-counter-right{display:flex;align-items:center;gap:12px}
+.row-count-display{font-family:‘Playfair Display’,serif;font-size:18px;color:var(–teal);min-width:24px;text-align:center}
+.row-plus-btn{background:var(–teal-bg);border:1px solid rgba(124,185,168,0.3);color:var(–teal);
+border-radius:8px;padding:6px 14px;font-size:18px;cursor:pointer}
+.reset-wrap{text-align:center;padding:24px 0 8px}
+.reset-btn{background:none;border:1px solid var(–border);color:var(–muted);font-family:‘Lora’,serif;
+font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 20px;border-radius:20px;cursor:pointer}
+.complete-banner{margin:16px 14px 0;background:var(–teal-bg);border:1px solid rgba(124,185,168,0.3);
+border-radius:14px;padding:16px 18px;text-align:center;display:none}
+.complete-banner.show{display:block}
+.complete-banner h3{font-family:‘Playfair Display’,serif;font-size:17px;font-style:italic;color:var(–teal);margin-bottom:4px}
+.complete-banner p{font-size:12px;color:var(–muted)}
+
+/* HISTORY PAGE */
+.history-header{padding:24px 18px 16px;border-bottom:1px solid var(–border);position:sticky;top:0;
+background:rgba(26,22,18,0.93);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:100}
+.history-title{font-family:‘Playfair Display’,serif;font-size:24px;font-weight:700;margin-bottom:3px}
+.history-sub{font-size:12px;color:var(–muted);font-style:italic}
+.stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 14px 0}
+.stat-card{background:var(–surface);border:1px solid var(–border);border-radius:14px;padding:14px}
+.stat-card-val{font-family:‘Playfair Display’,serif;font-size:28px;font-weight:700;line-height:1;margin-bottom:4px}
+.stat-card-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(–muted)}
+.stat-card-sub{font-size:11px;color:var(–dim);margin-top:3px}
+.chart-card{margin:12px 14px 0;background:var(–surface);border:1px solid var(–border);border-radius:18px;padding:18px}
+.chart-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(–muted);margin-bottom:16px}
+.chart-wrap{position:relative;height:160px;margin-bottom:8px}
+canvas#historyChart{width:100%!important;height:160px!important}
+.chart-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(–muted)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cat-breakdown{margin:12px 14px 0;background:var(–surface);border:1px solid var(–border);border-radius:18px;padding:18px}
+.breakdown-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(–muted);margin-bottom:14px}
+.breakdown-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.breakdown-label{font-size:12px;color:var(–muted);width:70px;flex-shrink:0}
+.breakdown-bar-wrap{flex:1;height:8px;background:rgba(245,240,232,0.08);border-radius:4px;overflow:hidden}
+.breakdown-bar{height:100%;border-radius:4px;transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1)}
+.breakdown-val{font-size:12px;color:var(–muted);width:30px;text-align:right;flex-shrink:0}
+.streak-card{margin:12px 14px 0;background:var(–surface);border:1px solid var(–border);border-radius:18px;padding:18px}
+.streak-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.streak-day{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+font-size:10px;font-family:‘Lora’,serif;flex-direction:column;gap:1px}
+.streak-day-label{font-size:8px;color:var(–dim)}
+.no-data{text-align:center;padding:40px 20px;color:var(–muted);font-style:italic;font-size:14px;line-height:1.7}
+
+/* FRIENDS PAGE */
+.friends-header{padding:24px 18px 16px;border-bottom:1px solid var(–border);position:sticky;top:0;
+background:rgba(26,22,18,0.93);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:100}
+.friends-title{font-family:‘Playfair Display’,serif;font-size:24px;font-weight:700;margin-bottom:3px}
+.friends-sub{font-size:12px;color:var(–muted);font-style:italic}
+.add-friend-btn{display:flex;align-items:center;gap:8px;margin:14px 14px 0;background:var(–orange-bg);
+border:1px solid rgba(232,168,124,0.25);border-radius:12px;padding:12px 16px;cursor:pointer;
+color:var(–orange);font-family:‘Lora’,serif;font-size:13px;width:calc(100% - 28px)}
+.friends-list{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.friend-card{background:var(–surface);border:1px solid var(–border);border-radius:14px;overflow:hidden}
+.friend-card.overdue-high{border-color:rgba(201,144,154,0.4)}
+.friend-card.overdue-low{border-color:rgba(232,168,124,0.3)}
+.friend-header{padding:13px 14px;display:flex;align-items:center;gap:11px;cursor:pointer}
+.friend-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+font-family:‘Playfair Display’,serif;font-size:14px;font-weight:700;flex-shrink:0}
+.friend-info{flex:1;min-width:0}
+.friend-name{font-family:‘Playfair Display’,serif;font-size:15px;margin-bottom:2px}
+.friend-meta{font-size:11px;color:var(–muted)}
+.friend-status{flex-shrink:0;text-align:right}
+.friend-days{font-family:‘Playfair Display’,serif;font-size:16px}
+.friend-days-label{font-size:9px;color:var(–muted);letter-spacing:1px;text-transform:uppercase}
+.friend-body{border-top:1px solid var(–border);padding:12px 14px 14px;display:none}
+.friend-body.open{display:block}
+.friend-notes{font-size:13px;color:var(–muted);line-height:1.6;font-style:italic;margin-bottom:12px}
+.friend-actions{display:flex;gap:8px;flex-wrap:wrap}
+.friend-btn{background:none;border:1px solid var(–border);color:var(–muted);font-family:‘Lora’,serif;
+font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border-radius:20px;cursor:pointer}
+.friend-btn.primary{background:var(–teal-bg);border-color:rgba(124,185,168,0.3);color:var(–teal)}
+.friend-btn.danger{border-color:rgba(201,144,154,0.3);color:var(–rose)}
+.overdue-banner{margin:14px 14px 0;background:var(–rose-bg);border:1px solid rgba(201,144,154,0.25);
+border-radius:12px;padding:12px 16px;display:none}
+.overdue-banner.show{display:flex;align-items:center;gap:10px}
+.overdue-banner-text{font-size:13px;color:var(–rose)}
+.overdue-banner-count{font-family:‘Playfair Display’,serif;font-size:22px;color:var(–rose);flex-shrink:0}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,8,6,0.85);z-index:500;display:none;align-items:flex-end}
+.modal-overlay.show{display:flex}
+.modal{background:#221E1A;border-radius:20px 20px 0 0;padding:24px 20px;width:100%;
+padding-bottom:calc(20px + var(–safe-bottom))}
+.modal-title{font-family:‘Playfair Display’,serif;font-size:20px;font-weight:700;margin-bottom:18px}
+.modal-field{margin-bottom:14px}
+.modal-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(–muted);margin-bottom:6px;display:block}
+.modal-input{width:100%;background:rgba(245,240,232,0.06);border:1px solid var(–border);border-radius:10px;
+padding:11px 14px;color:var(–text);font-family:‘Lora’,serif;font-size:14px;outline:none}
+.modal-input:focus{border-color:rgba(232,168,124,0.4)}
+.modal-select{width:100%;background:rgba(245,240,232,0.06);border:1px solid var(–border);border-radius:10px;
+padding:11px 14px;color:var(–text);font-family:‘Lora’,serif;font-size:14px;outline:none;appearance:none}
+.modal-textarea{width:100%;background:rgba(245,240,232,0.06);border:1px solid var(–border);border-radius:10px;
+padding:11px 14px;color:var(–text);font-family:‘Lora’,serif;font-size:14px;outline:none;min-height:80px;resize:none}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-btn{flex:1;padding:13px;border-radius:12px;font-family:‘Lora’,serif;font-size:13px;
+letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:none}
+.modal-btn.cancel{background:rgba(245,240,232,0.08);color:var(–muted)}
+.modal-btn.save{background:var(–orange);color:#1A1612;font-weight:700}
+
+/* SETTINGS PAGE */
+.settings-page{padding:24px 18px}
+.settings-title{font-family:‘Playfair Display’,serif;font-size:24px;font-weight:700;margin-bottom:4px}
+.settings-sub{font-size:12px;color:var(–muted);font-style:italic;margin-bottom:24px}
+.settings-section{background:var(–surface);border:1px solid var(–border);border-radius:14px;padding:16px;margin-bottom:12px}
+.settings-section h4{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(–muted);margin-bottom:12px}
+.settings-field{margin-bottom:12px}
+.settings-label{font-size:12px;color:var(–muted);margin-bottom:6px;display:block}
+.settings-input{width:100%;background:rgba(245,240,232,0.06);border:1px solid var(–border);border-radius:10px;
+padding:11px 14px;color:var(–text);font-family:‘Lora’,serif;font-size:13px;outline:none}
+.settings-input:focus{border-color:rgba(232,168,124,0.4)}
+.settings-btn{width:100%;background:var(–orange);color:#1A1612;border:none;border-radius:12px;
+padding:13px;font-family:‘Lora’,serif;font-size:13px;font-weight:700;letter-spacing:1px;
+text-transform:uppercase;cursor:pointer;margin-top:4px}
+.settings-btn.danger{background:var(–rose-bg);color:var(–rose);border:1px solid rgba(201,144,154,0.3)}
+.settings-msg{font-size:12px;text-align:center;margin-top:8px;min-height:18px}
+</style>
+
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+
+<div id="setupScreen">
+  <div class="setup-emoji">🔐</div>
+  <div class="setup-title">One-time setup</div>
+  <div class="setup-sub">Your data saves privately to your own GitHub repo. Nothing goes anywhere else. This takes two minutes.</div>
+  <div class="setup-step">
+    <h4>Step 1 — Create a GitHub token</h4>
+    <p>Go to <code>github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)</code></p>
+    <p>Click <strong>Generate new token (classic)</strong>. Name it <code>my-day-health</code>. Set expiry to 1 year. Check only the <code>repo</code> scope. Generate and copy it.</p>
+  </div>
+  <div class="setup-step">
+    <h4>Step 2 — Paste your token below</h4>
+    <p>It never leaves your phone. Stored only in your browser's local storage.</p>
+    <input class="setup-input" id="setupToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" spellcheck="false">
+  </div>
+  <div class="setup-step">
+    <h4>Step 3 — Confirm your repo</h4>
+    <p>Your private repo where daily scores will be saved.</p>
+    <input class="setup-input" id="setupRepo" value="steph-gpt/My-day-health" autocomplete="off">
+  </div>
+  <button class="setup-btn" onclick="completeSetup()">Connect & Start</button>
+  <div class="setup-error" id="setupError">Could not connect. Check your token and try again.</div>
+  <div class="setup-note">Your token is stored only on this device in localStorage. It is never transmitted anywhere except directly to the GitHub API on your behalf.</div>
+</div>
+
+<!-- DAY PAGE -->
+
+<div class="page active" id="page-day">
+  <div class="header">
+    <div class="header-date" id="headerDate"></div>
+    <div class="header-title">Your Day</div>
+    <div class="header-sub">Afternoon-peak · Output-weighted</div>
+  </div>
+  <div class="score-card">
+    <div class="score-row">
+      <div class="score-ring-wrap">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(245,240,232,0.07)" stroke-width="8"/>
+          <circle id="scoreArc" cx="50" cy="50" r="40" fill="none" stroke="#E8A87C" stroke-width="8"
+            stroke-dasharray="0 251.33" stroke-linecap="round" transform="rotate(-90 50 50)"
+            style="transition:stroke-dasharray 0.8s cubic-bezier(0.34,1.56,0.64,1),stroke 0.5s"/>
+        </svg>
+        <div class="score-text-wrap">
+          <div class="score-num" id="scoreNum" style="color:var(--orange)">0</div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:1px">SCORE</div>
+        </div>
+      </div>
+      <div class="score-info">
+        <div class="score-label">Day Score</div>
+        <div class="score-tasks" id="scoreTasks">0 of 0 tasks</div>
+        <div class="cat-row"><div class="cat-row-top"><span class="cat-name" style="color:var(--orange)">Moxie</span><span class="cat-count" id="jsCount">0/0</span></div><div class="progress-track"><div class="progress-fill" id="jsBar" style="background:var(--orange);width:0%"></div></div></div>
+        <div class="cat-row"><div class="cat-row-top"><span class="cat-name" style="color:var(--teal)">Wellbeing</span><span class="cat-count" id="wbCount">0/0</span></div><div class="progress-track"><div class="progress-fill" id="wbBar" style="background:var(--teal);width:0%"></div></div></div>
+        <div class="cat-row"><div class="cat-row-top"><span class="cat-name" style="color:var(--purple)">Build</span><span class="cat-count" id="bdCount">0/0</span></div><div class="progress-track"><div class="progress-fill" id="bdBar" style="background:var(--purple);width:0%"></div></div></div>
+        <div class="cat-row"><div class="cat-row-top"><span class="cat-name" style="color:var(--rose)">Love</span><span class="cat-count" id="lvCount">0/0</span></div><div class="progress-track"><div class="progress-fill" id="lvBar" style="background:var(--rose);width:0%"></div></div></div>
+      </div>
+    </div>
+    <div class="rowing-stat">
+      <div><div style="font-size:11px;color:var(--muted)">🚣 Rows today</div><div style="font-size:10px;color:var(--dim)">5-min thinking sessions</div></div>
+      <div style="text-align:right"><div class="rowing-count" id="rowingTotal">0</div><div style="font-size:9px;color:var(--dim);letter-spacing:1px">SESSIONS</div></div>
+    </div>
+    <div class="sync-row">
+      <div class="sync-status"><div class="sync-dot" id="syncDot"></div><span id="syncText">Not synced yet today</span></div>
+      <button class="sync-btn" onclick="syncToGitHub()">Sync now</button>
+    </div>
+    <div class="why-section">
+      <button class="why-btn" onclick="toggleWhy('mx')" style="color:var(--orange)"><span class="why-arrow" id="mxArrow">▶</span> Why Moxie Moments?</button>
+      <div class="why-body" id="mxWhy" style="background:var(--orange-bg);border:1px solid rgba(232,168,124,0.2)">Job search is your primary mission. Every application, follow-up, and strategic conversation is a move that changes your circumstances. You've got the skills — this is just the output window.</div>
+      <button class="why-btn" onclick="toggleWhy('wb')" style="color:var(--teal)"><span class="why-arrow" id="wbArrow">▶</span> Why Wellbeing?</button>
+      <div class="why-body" id="wbWhy" style="background:var(--teal-bg);border:1px solid rgba(124,185,168,0.2)">Dog walks create rhythm. Movement regulates focus. A real lunch and a proper outfit signal to your brain that the day is real. These aren't soft — they're the infrastructure everything else runs on.</div>
+      <button class="why-btn" onclick="toggleWhy('bd')" style="color:var(--purple)"><span class="why-arrow" id="bdArrow">▶</span> Why Personal Build?</button>
+      <div class="why-body" id="bdWhy" style="background:var(--purple-bg);border:1px solid rgba(168,159,201,0.2)">Your voice, your framework, your future consulting practice — this is the work that compounds. It feeds you creatively, builds your platform, and positions you ahead of wherever you land next.</div>
+      <button class="why-btn" onclick="toggleWhy('lv')" style="color:var(--rose)"><span class="why-arrow" id="lvArrow">▶</span> Why Love Matters?</button>
+      <div class="why-body" id="lvWhy" style="background:var(--rose-bg);border:1px solid rgba(201,144,154,0.2)">You don't not care — you just don't have a system. This block gives your relationships the same structured attention you give your work.</div>
+    </div>
+  </div>
+  <div class="section-label">Schedule</div>
+  <div class="blocks-list" id="blocksList"></div>
+  <div class="complete-banner" id="completeBanner">
+    <h3>Full day. Every task. That's a 100.</h3>
+    <p>Go cook something good and text someone you love.</p>
+  </div>
+  <div class="reset-wrap"><button class="reset-btn" onclick="confirmReset()">Reset Day</button></div>
+</div>
+
+<!-- HISTORY PAGE -->
+
+<div class="page" id="page-history">
+  <div class="history-header">
+    <div class="history-title">Progress</div>
+    <div class="history-sub" id="historySubtitle">Loading your data...</div>
+  </div>
+  <div id="historyContent"></div>
+</div>
+
+<!-- FRIENDS PAGE -->
+
+<div class="page" id="page-friends">
+  <div class="friends-header">
+    <div class="friends-title">Love Matters 🤍</div>
+    <div class="friends-sub">Your people. Their worlds. Your reminders.</div>
+  </div>
+  <div class="overdue-banner" id="overdueBanner">
+    <div class="overdue-banner-count" id="overdueCount">0</div>
+    <div class="overdue-banner-text">people could use a check-in from you</div>
+  </div>
+  <button class="add-friend-btn" onclick="openAddFriend()"><span style="font-size:18px">+</span> Add someone to your circle</button>
+  <div class="friends-list" id="friendsList"></div>
+</div>
+
+<!-- SETTINGS PAGE -->
+
+<div class="page" id="page-settings">
+  <div style="padding:24px 18px 0;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(26,22,18,0.93);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:100;padding-bottom:18px">
+    <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:3px">Settings</div>
+    <div style="font-size:12px;color:var(--muted);font-style:italic">GitHub sync & preferences</div>
+  </div>
+  <div class="settings-page">
+    <div class="settings-section">
+      <h4>GitHub Connection</h4>
+      <div class="settings-field">
+        <label class="settings-label">Repository</label>
+        <input class="settings-input" id="settingsRepo" placeholder="username/repo-name">
+      </div>
+      <div class="settings-field">
+        <label class="settings-label">Personal Access Token</label>
+        <input class="settings-input" id="settingsToken" type="password" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+      </div>
+      <button class="settings-btn" onclick="saveSettings()">Save & Test Connection</button>
+      <div class="settings-msg" id="settingsMsg"></div>
+    </div>
+    <div class="settings-section">
+      <h4>Data</h4>
+      <button class="settings-btn" onclick="syncToGitHub()" style="margin-bottom:10px">Force Sync Now</button>
+      <button class="settings-btn danger" onclick="clearAllData()">Clear All Local Data</button>
+    </div>
+    <div style="text-align:center;padding:20px 0;font-size:11px;color:var(--dim);line-height:1.7;font-style:italic">
+      Your token lives only on this device.<br>Daily scores sync to your private GitHub repo.<br>Friends data stays local only.
+    </div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-day" onclick="switchTab('day')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Day
+  </button>
+  <button class="tab-btn" id="tab-history" onclick="switchTab('history')">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Progress
+  </button>
+  <button class="tab-btn" id="tab-friends" onclick="switchTab('friends')">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Friends
+  </button>
+  <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </button>
+</div>
+
+<!-- FRIEND MODAL -->
+
+<div class="modal-overlay" id="friendModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Add someone</div>
+    <div class="modal-field"><label class="modal-label">Name</label><input class="modal-input" id="fName" placeholder="Their name" autocomplete="off"></div>
+    <div class="modal-field"><label class="modal-label">Circle</label>
+      <select class="modal-select" id="fTier">
+        <option value="close">Close circle — nudge after 3 days</option>
+        <option value="wider">Wider circle — nudge after 14 days</option>
+      </select>
+    </div>
+    <div class="modal-field"><label class="modal-label">What's going on in their life</label><textarea class="modal-textarea" id="fNotes" placeholder="Job stuff, health, big life things..."></textarea></div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn save" onclick="saveFriend()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──
+const SCHEDULE = [
+  {id:"s1",time:"8:00",label:"Morning buffer",type:"wellbeing",icon:"☀️",
+   desc:"Slow start. Protect it. Your brain isn't online yet — this block works with that, not against it.",
+   tasks:["Walk the dog","Read with coffee","Light stretch or movement","Quick kitchen tidy"]},
+  {id:"s2",time:"10:00",label:"Become a person",type:"wellbeing",icon:"✨",
+   desc:"Get dressed like you have somewhere to be — because you do. This signals to your brain the day is real.",
+   tasks:["Skincare routine","Hair + get dressed (real outfit)"]},
+  {id:"s3",time:"11:00",label:"Personal build",type:"build",icon:"🔨",
+   desc:"Your voice, your future. Creative and generative — feeds you before the grind starts. Row whenever a thought needs chasing.",
+   tasks:["LinkedIn / content creation","Website or consulting research","Podcast or idea development","General research / perspective building"],
+   hasRowing:true},
+  {id:"s4",time:"12:00",label:"Midday reset",type:"wellbeing",icon:"🥗",
+   desc:"Two hours. Full dog walk, proper cooking, actual eating. Big nutritious lunch — dinner stays light. Do not rush this.",
+   tasks:["Full dog walk","Cook a proper nutritious lunch","Eat properly — no desk, no phone"]},
+  {id:"s5",time:"14:00",label:"Moxie Moments",type:"moxie",icon:"🎯",
+   desc:"Peak window. Three hours of the work that changes your circumstances. Gamify it, build it — whatever gets you in.",
+   tasks:["Follow up on existing applications","Tailor + submit new application (if applicable)","Interview prep or actual interview","Strategic conversations / new contacts","Update tracker (always)"]},
+  {id:"s6",time:"17:00",label:"Movin the Booty",type:"wellbeing",icon:"🍑",
+   desc:"45 minutes of movement then the dog gets her second walk. Gear shift. You earned this.",
+   tasks:["Pilates video or light weights (45 min)","Afternoon dog walk"]},
+  {id:"s7",time:"18:30",label:"Love Matters",type:"love",icon:"🤍",
+   desc:"Light dinner, clean kitchen, check on your people. Close the day properly.",
+   tasks:["Light dinner","Kitchen tidy"]},
+];
+
+const CAT = {
+  moxie:    {color:"#E8A87C",bg:"rgba(232,168,124,0.12)",label:"Moxie"},
+  wellbeing:{color:"#7CB9A8",bg:"rgba(124,185,168,0.12)",label:"Wellbeing"},
+  build:    {color:"#A89FC9",bg:"rgba(168,159,201,0.12)",label:"Build"},
+  love:     {color:"#C9909A",bg:"rgba(201,144,154,0.12)",label:"Love"},
+};
+const WEIGHTS = {moxie:0.45,wellbeing:0.25,build:0.20,love:0.10};
+
+const KEYS = {
+  state:"myday_state_v4", date:"myday_date_v4", rowing:"myday_rowing_v4",
+  friends:"myday_friends_v2", token:"myday_gh_token", repo:"myday_gh_repo",
+  history:"myday_history_v1", syncDate:"myday_sync_date"
+};
+
+function todayStr(){return new Date().toISOString().slice(0,10)}
+function get(k){return localStorage.getItem(k)}
+function set(k,v){localStorage.setItem(k,v)}
+
+function loadState(){
+  if(get(KEYS.date)!==todayStr()){
+    localStorage.removeItem(KEYS.state);
+    localStorage.removeItem(KEYS.rowing);
+    set(KEYS.date,todayStr());
+  }
+  const r=get(KEYS.state);
+  if(r)return JSON.parse(r);
+  const s={};
+  SCHEDULE.forEach(b=>b.tasks.forEach((_,i)=>{s[`${b.id}-${i}`]=false}));
+  return s;
+}
+
+let state=loadState();
+let rowingCount=parseInt(get(KEYS.rowing)||"0");
+let friends=JSON.parse(get(KEYS.friends)||"[]");
+let history=JSON.parse(get(KEYS.history)||"{}");
+let expandedBlock=null,expandedFriend=null,editingFriendId=null;
+
+// ── SETUP ──
+function checkSetup(){
+  if(!get(KEYS.token)||!get(KEYS.repo)){
+    document.getElementById("setupScreen").classList.add("show");
+    return false;
+  }
+  return true;
+}
+
+async function completeSetup(){
+  const token=document.getElementById("setupToken").value.trim();
+  const repo=document.getElementById("setupRepo").value.trim();
+  if(!token||!repo){return}
+  const err=document.getElementById("setupError");
+  err.style.display="none";
+  try{
+    const r=await fetch(`https://api.github.com/repos/${repo}`,{
+      headers:{"Authorization":`token ${token}`,"Accept":"application/vnd.github.v3+json"}
+    });
+    if(!r.ok)throw new Error("Bad token or repo");
+    set(KEYS.token,token);
+    set(KEYS.repo,repo);
+    document.getElementById("setupScreen").classList.remove("show");
+    init();
+  }catch(e){err.style.display="block"}
+}
+
+// ── TABS ──
+function switchTab(tab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`page-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  if(tab==='friends')renderFriends();
+  if(tab==='history')renderHistory();
+  if(tab==='settings')loadSettings();
+}
+
+// ── SCORE ──
+function calcScore(){
+  const counts={moxie:[0,0],wellbeing:[0,0],build:[0,0],love:[0,0]};
+  SCHEDULE.forEach(b=>b.tasks.forEach((_,i)=>{
+    counts[b.type][1]++;
+    if(state[`${b.id}-${i}`])counts[b.type][0]++;
+  }));
+  let score=0;
+  Object.entries(WEIGHTS).forEach(([cat,w])=>{
+    const[d,t]=counts[cat];
+    score+=(t>0?d/t:0)*w*100;
+  });
+  return{score:Math.round(score),counts};
+}
+
+function updateScore(){
+  const{score,counts}=calcScore();
+  const circ=2*Math.PI*40,dash=(score/100)*circ;
+  const arc=document.getElementById("scoreArc");
+  arc.setAttribute("stroke-dasharray",`${dash} ${circ}`);
+  const col=score>=80?"#7CB9A8":score>=55?"#E8A87C":"#D07070";
+  arc.setAttribute("stroke",col);
+  const num=document.getElementById("scoreNum");
+  num.textContent=score;num.style.color=col;
+  const total=Object.keys(state).length,done=Object.values(state).filter(Boolean).length;
+  document.getElementById("scoreTasks").textContent=`${done} of ${total} tasks · weighted`;
+  const setBar=(id,cnt,bar)=>{const[d,t]=cnt;document.getElementById(id).textContent=`${d}/${t}`;document.getElementById(bar).style.width=t>0?`${Math.round(d/t*100)}%`:"0%"};
+  setBar("jsCount",counts.moxie,"jsBar");
+  setBar("wbCount",counts.wellbeing,"wbBar");
+  setBar("bdCount",counts.build,"bdBar");
+  setBar("lvCount",counts.love,"lvBar");
+  document.getElementById("rowingTotal").textContent=rowingCount;
+  document.getElementById("completeBanner").classList.toggle("show",done===total&&total>0);
+  // save today's score to local history
+  if(score>0){
+    history[todayStr()]={score,counts:Object.fromEntries(Object.entries(counts).map(([k,[d,t]])=>[k,t>0?Math.round(d/t*100):0])),rowing:rowingCount};
+    set(KEYS.history,JSON.stringify(history));
+  }
+}
+
+// ── GITHUB SYNC ──
+async function syncToGitHub(){
+  const token=get(KEYS.token),repo=get(KEYS.repo);
+  if(!token||!repo)return;
+  setSyncStatus("syncing","Syncing...");
+  try{
+    const path="data/scores.json";
+    const url=`https://api.github.com/repos/${repo}/contents/${path}`;
+    const headers={"Authorization":`token ${token}`,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"};
+    // get existing file
+    let sha=null,existing={};
+    try{
+      const r=await fetch(url,{headers});
+      if(r.ok){const d=await r.json();sha=d.sha;existing=JSON.parse(atob(d.content.replace(/\n/g,"")));}
+    }catch(e){}
+    const merged={...existing,...history};
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(merged,null,2))));
+    const body={message:`Day score ${todayStr()}`,content};
+    if(sha)body.sha=sha;
+    const r2=await fetch(url,{method:"PUT",headers,body:JSON.stringify(body)});
+    if(!r2.ok)throw new Error("Sync failed");
+    set(KEYS.syncDate,todayStr());
+    setSyncStatus("synced",`Synced ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`);
+  }catch(e){setSyncStatus("error","Sync failed — check settings")}
+}
+
+function setSyncStatus(state,text){
+  const dot=document.getElementById("syncDot"),txt=document.getElementById("syncText");
+  dot.className="sync-dot "+state;txt.textContent=text;
+}
+
+function checkSyncStatus(){
+  const sd=get(KEYS.syncDate);
+  if(sd===todayStr())setSyncStatus("synced","Synced today");
+  else setSyncStatus("","Not synced yet today");
+}
+
+// ── BLOCKS ──
+function getCurrentBlockId(){
+  const now=new Date(),mins=now.getHours()*60+now.getMinutes();
+  let cur=null;
+  SCHEDULE.forEach((b,i)=>{
+    const[h,m]=b.time.split(":").map(Number),start=h*60+m;
+    const next=SCHEDULE[i+1];
+    const end=next?(()=>{const[nh,nm]=next.time.split(":").map(Number);return nh*60+nm})():start+120;
+    if(mins>=start&&mins<end)cur=b.id;
+  });
+  return cur;
+}
+
+function renderBlocks(){
+  const curId=getCurrentBlockId(),list=document.getElementById("blocksList");
+  list.innerHTML="";
+  SCHEDULE.forEach(block=>{
+    const cat=CAT[block.type],isCurrent=block.id===curId;
+    const done=block.tasks.filter((_,i)=>state[`${block.id}-${i}`]).length;
+    const pct=Math.round(done/block.tasks.length*100),isOpen=expandedBlock===block.id;
+    const div=document.createElement("div");
+    div.className="block"+(isCurrent?" current":"");
+    if(isCurrent){div.style.setProperty("--c",cat.color);div.style.setProperty("--cbg",cat.bg)}
+    const taskHTML=block.tasks.map((task,i)=>{
+      const checked=state[`${block.id}-${i}`];
+      return`<div class="task-item" onclick="toggleTask('${block.id}',${i})">
+        <div class="task-box${checked?" done":""}" style="${checked?`background:${cat.color};border-color:${cat.color}`:""}"></div>
+        <div class="task-label${checked?" done":""}">${task}</div></div>`;
+    }).join("");
+    const rowHTML=block.hasRowing?`<div class="rowing-block"><div class="rowing-counter-row">
+      <div style="font-size:13px">🚣 5-min row sessions</div>
+      <div class="rowing-counter-right"><div class="row-count-display" id="rowDisplay">${rowingCount}</div>
+      <button class="row-plus-btn" onclick="addRow(event)">+</button></div></div></div>`:"";
+    div.innerHTML=`<div class="block-header" onclick="toggleBlock('${block.id}')">
+      <div class="block-icon">${block.icon}</div>
+      <div class="block-meta">
+        <div class="block-tags"><span class="block-time">${block.time}</span>
+        ${isCurrent?`<span class="now-badge" style="background:${cat.color}">Now</span>`:""}
+        <span class="block-badge" style="background:${cat.bg};color:${cat.color}">${cat.label}</span></div>
+        <div class="block-name">${block.label}</div>
+      </div>
+      <div class="block-right">
+        <div><div class="block-frac" style="color:${pct===100?cat.color:"var(--muted)"}">${done}/${block.tasks.length}</div>
+        <div class="block-mini-bar"><div class="block-mini-fill" style="background:${cat.color};width:${pct}%"></div></div></div>
+        <div class="block-chevron${isOpen?" open":""}" id="chev-${block.id}">▼</div>
+      </div></div>
+      <div class="block-body${isOpen?" open":""}" id="body-${block.id}">
+        <div class="block-desc">${block.desc}</div>${rowHTML}${taskHTML}</div>`;
+    list.appendChild(div);
+  });
+}
+
+function toggleBlock(id){expandedBlock=expandedBlock===id?null:id;renderBlocks()}
+function toggleTask(blockId,idx){
+  state[`${blockId}-${idx}`]=!state[`${blockId}-${idx}`];
+  set(KEYS.state,JSON.stringify(state));
+  renderBlocks();updateScore();
+}
+function addRow(e){
+  e.stopPropagation();rowingCount++;
+  set(KEYS.rowing,String(rowingCount));
+  const d=document.getElementById("rowDisplay");if(d)d.textContent=rowingCount;
+  updateScore();
+}
+function confirmReset(){
+  if(confirm("Reset all tasks for today?")){
+    Object.keys(state).forEach(k=>state[k]=false);
+    rowingCount=0;
+    set(KEYS.state,JSON.stringify(state));
+    set(KEYS.rowing,"0");
+    renderBlocks();updateScore();
+  }
+}
+function toggleWhy(w){
+  const body=document.getElementById(`${w}Why`),arrow=document.getElementById(`${w}Arrow`);
+  const open=body.classList.contains("open");
+  body.classList.toggle("open",!open);arrow.classList.toggle("open",!open);
+}
+
+// ── HISTORY ──
+function renderHistory(){
+  const content=document.getElementById("historyContent");
+  const entries=Object.entries(history).sort((a,b)=>a[0]<b[0]?-1:1);
+  const subtitle=document.getElementById("historySubtitle");
+
+  if(entries.length===0){
+    subtitle.textContent="No data yet — complete your first day to start tracking";
+    content.innerHTML=`<div class="no-data">Your progress graph will appear here after your first full day.<br><br>Complete tasks, sync to GitHub, and come back tomorrow.</div>`;
+    return;
+  }
+
+  subtitle.textContent=`${entries.length} day${entries.length===1?"":"s"} tracked`;
+  const scores=entries.map(([,v])=>v.score);
+  const avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+  const best=Math.max(...scores);
+
+  // streaks
+  let streak=0,maxStreak=0,tempStreak=0;
+  const today=todayStr();
+  const sortedDates=entries.map(([d])=>d).sort();
+  for(let i=sortedDates.length-1;i>=0;i--){
+    const d=new Date(sortedDates[i]);
+    const expected=new Date(today);expected.setDate(expected.getDate()-(sortedDates.length-1-i));
+    if(d.toISOString().slice(0,10)===expected.toISOString().slice(0,10)&&history[sortedDates[i]].score>=50){streak++;}
+    else break;
+  }
+  for(let i=0;i<sortedDates.length;i++){
+    if(history[sortedDates[i]].score>=50){tempStreak++;maxStreak=Math.max(maxStreak,tempStreak);}
+    else tempStreak=0;
+  }
+
+  // category averages
+  const catAvgs={moxie:0,wellbeing:0,build:0,love:0};
+  const catKeys=Object.keys(catAvgs);
+  entries.forEach(([,v])=>catKeys.forEach(k=>{catAvgs[k]+=(v.counts?.[k]||0)}));
+  catKeys.forEach(k=>catAvgs[k]=Math.round(catAvgs[k]/entries.length));
+
+  // last 30 days for chart
+  const last30=entries.slice(-30);
+  const chartDates=last30.map(([d])=>d.slice(5));
+  const chartScores=last30.map(([,v])=>v.score);
+
+  content.innerHTML=`
+    <div class="stat-cards">
+      <div class="stat-card"><div class="stat-card-val" style="color:var(--orange)">${avg}</div><div class="stat-card-label">Average</div><div class="stat-card-sub">across all days</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:var(--teal)">${best}</div><div class="stat-card-label">Best Day</div><div class="stat-card-sub">your personal peak</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:var(--purple)">${streak}</div><div class="stat-card-label">Streak</div><div class="stat-card-sub">days ≥50 in a row</div></div>
+      <div class="stat-card"><div class="stat-card-val" style="color:var(--rose)">${maxStreak}</div><div class="stat-card-label">Best Streak</div><div class="stat-card-sub">all time</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Last ${last30.length} Days — Day Score</div>
+      <div class="chart-wrap"><canvas id="historyChart"></canvas></div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Score</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(124,185,168,0.5)"></div>50+ threshold</div>
+      </div>
+    </div>
+    <div class="cat-breakdown">
+      <div class="breakdown-title">Category Averages</div>
+      <div class="breakdown-row"><div class="breakdown-label" style="color:var(--orange)">Moxie</div><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="background:var(--orange);width:${catAvgs.moxie}%"></div></div><div class="breakdown-val">${catAvgs.moxie}%</div></div>
+      <div class="breakdown-row"><div class="breakdown-label" style="color:var(--teal)">Wellbeing</div><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="background:var(--teal);width:${catAvgs.wellbeing}%"></div></div><div class="breakdown-val">${catAvgs.wellbeing}%</div></div>
+      <div class="breakdown-row"><div class="breakdown-label" style="color:var(--purple)">Build</div><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="background:var(--purple);width:${catAvgs.build}%"></div></div><div class="breakdown-val">${catAvgs.build}%</div></div>
+      <div class="breakdown-row"><div class="breakdown-label" style="color:var(--rose)">Love</div><div class="breakdown-bar-wrap"><div class="breakdown-bar" style="background:var(--rose);width:${catAvgs.love}%"></div></div><div class="breakdown-val">${catAvgs.love}%</div></div>
+    </div>
+    <div class="streak-card" style="margin:12px 14px 0;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px">
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Last 14 Days</div>
+      <div class="streak-row">${last30.slice(-14).map(([d,v])=>{
+        const score=v.score;
+        const col=score>=80?"#7CB9A8":score>=50?"#E8A87C":"rgba(245,240,232,0.1)";
+        const day=new Date(d+'T12:00:00').toLocaleDateString('en',{weekday:'narrow'});
+        return`<div class="streak-day" style="background:${col}20;border:1px solid ${col}40">
+          <span style="font-size:11px;font-family:'Playfair Display',serif;color:${score>0?col:"var(--dim)"}">${score>0?score:'-'}</span>
+          <span class="streak-day-label">${day}</span></div>`;
+      }).join("")}</div>
+    </div>`;
+
+  // draw chart
+  setTimeout(()=>{
+    const canvas=document.getElementById("historyChart");
+    if(!canvas)return;
+    const ctx=canvas.getContext("2d");
+    const W=canvas.offsetWidth,H=160;
+    canvas.width=W*window.devicePixelRatio;canvas.height=H*window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
+    const pad={t:10,r:10,b:24,l:28};
+    const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+    const n=chartScores.length;
+    if(n<1)return;
+    const xStep=cW/(Math.max(n-1,1));
+    const yScale=v=>pad.t+cH-(v/100)*cH;
+    // grid
+    ctx.strokeStyle="rgba(245,240,232,0.06)";ctx.lineWidth=1;
+    [0,25,50,75,100].forEach(y=>{
+      const yy=yScale(y);
+      ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(pad.l+cW,yy);ctx.stroke();
+      ctx.fillStyle="rgba(245,240,232,0.25)";ctx.font="9px monospace";ctx.textAlign="right";
+      ctx.fillText(y,pad.l-4,yy+3);
+    });
+    // threshold line
+    ctx.strokeStyle="rgba(124,185,168,0.3)";ctx.setLineDash([4,4]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,yScale(50));ctx.lineTo(pad.l+cW,yScale(50));ctx.stroke();
+    ctx.setLineDash([]);
+    // fill
+    const grad=ctx.createLinearGradient(0,pad.t,0,pad.t+cH);
+    grad.addColorStop(0,"rgba(232,168,124,0.3)");grad.addColorStop(1,"rgba(232,168,124,0)");
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    chartScores.forEach((s,i)=>{const x=pad.l+i*xStep,y=yScale(s);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+    ctx.lineTo(pad.l+(n-1)*xStep,yScale(0));ctx.lineTo(pad.l,yScale(0));ctx.closePath();ctx.fill();
+    // line
+    ctx.strokeStyle="#E8A87C";ctx.lineWidth=2;ctx.lineJoin="round";ctx.lineCap="round";
+    ctx.beginPath();
+    chartScores.forEach((s,i)=>{const x=pad.l+i*xStep,y=yScale(s);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+    ctx.stroke();
+    // dots
+    chartScores.forEach((s,i)=>{
+      const x=pad.l+i*xStep,y=yScale(s);
+      ctx.fillStyle=s>=80?"#7CB9A8":s>=50?"#E8A87C":"#D07070";
+      ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();
+    });
+    // x labels — show every ~5
+    ctx.fillStyle="rgba(245,240,232,0.3)";ctx.font="8px monospace";ctx.textAlign="center";
+    chartDates.forEach((d,i)=>{if(i%5===0||i===n-1)ctx.fillText(d,pad.l+i*xStep,H-6)});
+  },50);
+}
+
+// ── FRIENDS ──
+function daysSince(d){if(!d)return 999;return Math.floor((Date.now()-new Date(d).getTime())/86400000)}
+function isOverdue(f){return daysSince(f.lastContact)>=(f.tier==="close"?3:14)}
+const ACOLORS=["#E8A87C","#7CB9A8","#A89FC9","#C9909A","#8BA8C9","#C9C490"];
+
+function renderFriends(){
+  const list=document.getElementById("friendsList");list.innerHTML="";
+  const over=friends.filter(isOverdue);
+  document.getElementById("overdueCount").textContent=over.length;
+  document.getElementById("overdueBanner").classList.toggle("show",over.length>0);
+  const sorted=[...friends].sort((a,b)=>{
+    const ao=isOverdue(a)?-1:0,bo=isOverdue(b)?-1:0;
+    if(ao!==bo)return ao-bo;
+    return daysSince(a.lastContact)-daysSince(b.lastContact);
+  });
+  sorted.forEach(f=>{
+    const days=daysSince(f.lastContact),thr=f.tier==="close"?3:14,over=days>=thr;
+    const ci=Math.abs(f.name.charCodeAt(0))%ACOLORS.length,ac=ACOLORS[ci];
+    const isOpen=expandedFriend===f.id;
+    const dc=over?(days>=thr*2?"#C9909A":"#E8A87C"):"#7CB9A8";
+    const initials=f.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+    const card=document.createElement("div");
+    card.className="friend-card"+(over&&days>=thr*2?" overdue-high":over?" overdue-low":"");
+    card.innerHTML=`<div class="friend-header" onclick="toggleFriend('${f.id}')">
+      <div class="friend-avatar" style="background:${ac}20;color:${ac};border:1.5px solid ${ac}40">${initials}</div>
+      <div class="friend-info"><div class="friend-name">${f.name}</div>
+      <div class="friend-meta">${f.tier==="close"?"Close · 3-day nudge":"Wider · 14-day nudge"}</div></div>
+      <div class="friend-status"><div class="friend-days" style="color:${dc}">${f.lastContact?days+"d ago":"Never"}</div>
+      <div class="friend-days-label">last contact</div></div></div>
+      <div class="friend-body${isOpen?" open":""}" id="fb-${f.id}">
+        <div class="friend-notes">${f.notes||"<em>No notes yet.</em>"}</div>
+        <div class="friend-actions">
+          <button class="friend-btn primary" onclick="logContact('${f.id}')">✓ Reached out</button>
+          <button class="friend-btn" onclick="editFriend('${f.id}')">Edit</button>
+          <button class="friend-btn danger" onclick="deleteFriend('${f.id}')">Remove</button>
+        </div></div>`;
+    list.appendChild(card);
+  });
+  if(!friends.length)list.innerHTML=`<div class="no-data">No one added yet.<br>Start with the people who matter most.</div>`;
+}
+
+function toggleFriend(id){expandedFriend=expandedFriend===id?null:id;renderFriends()}
+function logContact(id){const f=friends.find(f=>f.id===id);if(f){f.lastContact=new Date().toISOString();set(KEYS.friends,JSON.stringify(friends));renderFriends()}}
+function deleteFriend(id){if(confirm("Remove?")){ friends=friends.filter(f=>f.id!==id);set(KEYS.friends,JSON.stringify(friends));renderFriends()}}
+function editFriend(id){
+  const f=friends.find(f=>f.id===id);if(!f)return;
+  editingFriendId=id;
+  document.getElementById("modalTitle").textContent="Edit";
+  document.getElementById("fName").value=f.name;
+  document.getElementById("fTier").value=f.tier;
+  document.getElementById("fNotes").value=f.notes||"";
+  document.getElementById("friendModal").classList.add("show");
+}
+function openAddFriend(){
+  editingFriendId=null;
+  document.getElementById("modalTitle").textContent="Add someone";
+  document.getElementById("fName").value="";
+  document.getElementById("fTier").value="close";
+  document.getElementById("fNotes").value="";
+  document.getElementById("friendModal").classList.add("show");
+}
+function closeModal(){document.getElementById("friendModal").classList.remove("show")}
+function saveFriend(){
+  const name=document.getElementById("fName").value.trim();if(!name)return;
+  const tier=document.getElementById("fTier").value,notes=document.getElementById("fNotes").value.trim();
+  if(editingFriendId){const f=friends.find(f=>f.id===editingFriendId);if(f){f.name=name;f.tier=tier;f.notes=notes}}
+  else friends.push({id:Date.now().toString(),name,tier,notes,lastContact:null});
+  set(KEYS.friends,JSON.stringify(friends));closeModal();renderFriends();
+}
+
+// ── SETTINGS ──
+function loadSettings(){
+  document.getElementById("settingsRepo").value=get(KEYS.repo)||"steph-gpt/My-day-health";
+  document.getElementById("settingsToken").value=get(KEYS.token)||"";
+}
+async function saveSettings(){
+  const token=document.getElementById("settingsToken").value.trim();
+  const repo=document.getElementById("settingsRepo").value.trim();
+  const msg=document.getElementById("settingsMsg");
+  msg.style.color="var(--muted)";msg.textContent="Testing...";
+  try{
+    const r=await fetch(`https://api.github.com/repos/${repo}`,{
+      headers:{"Authorization":`token ${token}`,"Accept":"application/vnd.github.v3+json"}
+    });
+    if(!r.ok)throw new Error();
+    set(KEYS.token,token);set(KEYS.repo,repo);
+    msg.style.color="var(--teal)";msg.textContent="✓ Connected successfully";
+  }catch(e){msg.style.color="var(--rose)";msg.textContent="✗ Could not connect — check token & repo"}
+}
+function clearAllData(){
+  if(confirm("Clear all local data? This cannot be undone.")){
+    Object.values(KEYS).forEach(k=>localStorage.removeItem(k));
+    location.reload();
+  }
+}
+
+// ── INIT ──
+function setDate(){
+  document.getElementById("headerDate").textContent=new Date().toLocaleDateString("en-CA",{weekday:"long",month:"long",day:"numeric"});
+}
+
+function init(){
+  setDate();renderBlocks();updateScore();checkSyncStatus();
+  setInterval(()=>{renderBlocks();updateScore()},60000);
+  // auto-sync at end of day (17:30+)
+  const h=new Date().getHours();
+  if(h>=17&&get(KEYS.syncDate)!==todayStr())syncToGitHub();
+}
+
+if(checkSetup())init();
+</script>
+
+</body>
+</html>
