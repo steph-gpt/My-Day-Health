@@ -590,27 +590,34 @@ function updateScore(){
 // ── GITHUB SYNC ──
 async function syncToGitHub(){
   const token=get(KEYS.token),repo=get(KEYS.repo);
-  if(!token||!repo)return;
+  if(!token||!repo){setSyncStatus("error","No token — check Settings");return;}
   setSyncStatus("syncing","Syncing...");
   try{
+    const {score,counts}=calcScore();
+    const todayData={score,counts:Object.fromEntries(Object.entries(counts).map(([k,[d,t]])=>[k,t>0?Math.round(d/t*100):0])),rowing:rowingCount,synced:new Date().toISOString()};
     const path="data/scores.json";
     const url=`https://api.github.com/repos/${repo}/contents/${path}`;
     const headers={"Authorization":`token ${token}`,"Accept":"application/vnd.github.v3+json","Content-Type":"application/json"};
-    // get existing file
-    let sha=null,existing={};
+    let sha=null,merged={};
     try{
       const r=await fetch(url,{headers});
-      if(r.ok){const d=await r.json();sha=d.sha;existing=JSON.parse(atob(d.content.replace(/\n/g,"")));}
+      if(r.ok){
+        const d=await r.json();
+        sha=d.sha;
+        try{merged=JSON.parse(atob(d.content.replace(/\n/g,"")));}catch(e){}
+      }
     }catch(e){}
-    const merged={...existing,...history};
+    merged[todayStr()]=todayData;
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(merged,null,2))));
-    const body={message:`Day score ${todayStr()}`,content};
+    const body={message:`Day score ${todayStr()} — ${score}pts`,content};
     if(sha)body.sha=sha;
     const r2=await fetch(url,{method:"PUT",headers,body:JSON.stringify(body)});
-    if(!r2.ok)throw new Error("Sync failed");
+    if(!r2.ok){const err=await r2.json();throw new Error(err.message||"Sync failed");}
+    history[todayStr()]=todayData;
+    set(KEYS.history,JSON.stringify(history));
     set(KEYS.syncDate,todayStr());
     setSyncStatus("synced",`Synced ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`);
-  }catch(e){setSyncStatus("error","Sync failed — check settings")}
+  }catch(e){setSyncStatus("error","Sync failed — "+e.message);}
 }
 
 function setSyncStatus(state,text){
